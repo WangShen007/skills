@@ -1,0 +1,7 @@
+interface:
+  display_name: "Linux DO 浏览"
+  short_description: "检索、读取并核对公开 Linux DO 帖子内容"
+  default_prompt: "使用 $linux-do-browse 检索并读取公开的 Linux DO 帖子。"
+
+policy:
+  allow_implicit_invocation: true

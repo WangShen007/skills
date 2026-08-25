@@ -9,7 +9,7 @@
 ### 图像、PPT 与科研图形
 
 - `image-to-editable-ppt`：把图片、扫描 PPT、PDF 或图片型 PPT 还原为对象级可编辑 PPTX。
-- `GordenImage2PPTX`：图片型 PPT 的分层复刻与可编辑 PowerPoint 生成。
+- `gorden-image2pptx`：图片型 PPT 的分层复刻与可编辑 PowerPoint 生成。
 - `academic-figures-drawer`：生成适合论文的可编辑科研图和 draw.io 图。
 - `gpt-image-2-style-library`：GPT Image 风格选择和科研图提示词模板。
 - `codex-gateway-imagegen`：通过已配置的图像网关生成或编辑图片。
@@ -28,6 +28,10 @@
 
 - `skill-orchestrator`：把多个 Skills 串成一个统一入口。
 - `personal-management-orchestrator`：个人事务和目标的综合规划入口。
+
+### 信息检索
+
+- `linux-do-browse`：检索和读取公开 Linux DO 帖子，不登录、不发帖、不绕过验证。
 
 ## 使用方式
 

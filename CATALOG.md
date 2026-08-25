@@ -3,7 +3,7 @@
 | Skill | Category | Status | Notes |
 |---|---|---|---|
 | `image-to-editable-ppt` | PPT / image reconstruction | actively maintained | Includes candidate/accept lifecycle and Office-first QA. |
-| `GordenImage2PPTX` | PPT / image reconstruction | actively maintained | Layered reconstruction workflow. |
+| `gorden-image2pptx` | PPT / image reconstruction | actively maintained | Layered reconstruction workflow. |
 | `academic-figures-drawer` | Academic figures | curated | Editable draw.io and research-figure workflow. |
 | `gpt-image-2-style-library` | Image generation | curated | Prompt/style reference library. |
 | `codex-gateway-imagegen` | Image generation | curated | Local gateway image generation helper. |
@@ -12,6 +12,7 @@
 | `latex-rhythm-refiner` | LaTeX writing | curated | Readability post-processing for LaTeX prose. |
 | `skill-orchestrator` | Skill orchestration | personal | Unified front door for multi-skill tasks. |
 | `personal-management-orchestrator` | Personal planning | personal | Personal planning and task coordination. |
+| `linux-do-browse` | Web research | curated | Read-only public Linux DO page research; no login or posting. |
 
 `curated` means the skill is useful and retained for personal use; it does not
 necessarily mean it was authored from scratch. Check each skill's own metadata
