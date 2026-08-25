@@ -1,0 +1,27 @@
+# Secrets and local configuration
+.env
+.env.*
+*.key
+*.pem
+*credentials*
+*secret*
+auth.json
+token.json
+
+# Local runtimes and generated artifacts
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.DS_Store
+.pytest_cache/
+.mypy_cache/
+dist/
+build/
+
+# Skill run outputs
+image2pptx_runs/
+output/
+artifacts/
+tmp/

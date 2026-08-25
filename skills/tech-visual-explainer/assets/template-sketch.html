@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="paper">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 【填写】页面标题 -->
+<title>技术可视化</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/lxgwwenkai-regular.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/lxgwwenkai-bold.css">
+<style>
+/* ================= 设计 Token(唯一定义处)================= */
+:root {
+  --paper: #faf7f0;
+  --paper-alt: #fffdf8;
+  --ink: #35322b;
+  --ink-soft: #6f6a5e;
+  --ink-faint: #a8a191;
+  --line: #cfc8b8;
+  --blue: #3b6ec9;
+  --teal: #0e9d84;
+  --amber: #d9930d;
+  --red: #d64550;
+  --purple: #8958d8;
+  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --font-hand: 'LXGW WenKai', 'Xiaolai SC', 'KaiTi', 'STKaiti', 'AR PL UKai CN', cursive;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, monospace;
+  /* 手绘边框:不对称圆角模拟笔画 */
+  --wobble-a: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  --wobble-b: 15px 225px 15px 255px / 255px 15px 225px 15px;
+}
+[data-theme="chalk"] {
+  --paper: #232830;
+  --paper-alt: #2a303a;
+  --ink: #e9e4d8;
+  --ink-soft: #a8a294;
+  --ink-faint: #6f6a5e;
+  --line: #4a4f58;
+  --blue: #6f9ee8;
+  --teal: #3ec9ad;
+  --amber: #e8b34b;
+  --red: #e8707a;
+  --purple: #ab8ae8;
+}
+
+/* ================= 基础 ================= */
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font-family: var(--font-hand); font-size: 15px; line-height: 1.7;
+  /* 淡点阵坐标纸背景 */
+  background-image: radial-gradient(var(--line) 0.8px, transparent 0.8px);
+  background-size: 26px 26px;
+}
+.container { max-width: 1120px; margin: 0 auto; padding: 40px 24px 64px; }
+h1 { margin: 0; font-size: 27px; font-weight: 700; }
+h2 { margin: 0 0 4px; font-size: 20px; font-weight: 700; }
+h3 { margin: 0 0 8px; font-size: 16px; font-weight: 700; }
+.subtitle { margin: 8px 0 0; font-size: 15px; color: var(--ink-soft); max-width: 660px; }
+section { margin-top: 40px; }
+code { font-family: var(--font-mono); font-size: 0.85em; background: color-mix(in srgb, var(--ink) 8%, transparent); padding: 1px 5px; border-radius: 4px; }
+
+/* ================= 布局 ================= */
+.layout-split { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+.layout-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 860px) { .layout-split, .layout-compare { grid-template-columns: 1fr; } }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+
+/* ================= 组件(手绘边框)================= */
+.diagram, .card, .panel {
+  background: var(--paper-alt);
+  border: 1.6px solid var(--ink);
+  border-radius: var(--wobble-a);
+  padding: 16px;
+}
+.card:nth-child(even) { border-radius: var(--wobble-b); }
+.diagram { padding: 12px; }
+.diagram svg { display: block; width: 100%; height: auto; }
+.card p, .panel p { margin: 0; font-size: 13.5px; color: var(--ink-soft); line-height: 1.75; }
+.panel .kv { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; margin-top: 6px; }
+.panel .kv .k { color: var(--ink-faint); }
+.panel .kv .v { color: var(--ink-soft); text-align: right; }
+.stepper { display: flex; gap: 8px; flex-wrap: wrap; }
+.step-btn {
+  padding: 5px 14px; border: 1.6px solid var(--ink); border-radius: var(--wobble-b);
+  background: var(--paper-alt); color: var(--ink-soft);
+  font-family: var(--font-hand); font-size: 14px; cursor: pointer;
+  transition: color 0.2s var(--ease), background-color 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.step-btn:hover { color: var(--ink); transform: translateY(-1px); }
+.step-btn.is-current { background: var(--ink); border-color: var(--ink); color: var(--paper-alt); }
+
+/* ================= SVG 图元状态(颜色全由 CSS 控制,可覆盖 rough 属性)================= */
+.node { cursor: default; }
+.node .shape path, .node .shape rect { stroke: var(--c, var(--ink)); transition: stroke 0.2s var(--ease), stroke-width 0.2s var(--ease); }
+.node .shape rect { fill: none; stroke-width: 1.6; }
+.node .hfill path { stroke: var(--c, var(--ink-faint)); opacity: 0.3; }
+.node .node-label {
+  fill: var(--ink); font-family: var(--font-hand); font-size: 15px; font-weight: 700;
+  text-anchor: middle; dominant-baseline: central;
+}
+.node .node-sub {
+  fill: var(--ink-soft); font-family: var(--font-hand); font-size: 12px;
+  text-anchor: middle; dominant-baseline: central;
+}
+/* 激活强调:加粗笔画(不遮挡文字),配合非激活元素 is-dimmed 退后 */
+.node.is-active .shape path, .node.is-active .shape rect { stroke-width: 2.6; }
+.edge path, .edge line { stroke: var(--ink-soft); fill: none; transition: stroke 0.2s var(--ease); }
+.edge line, .edge .shaft { stroke-width: 1.6; }
+.edge.is-active path, .edge.is-active line { stroke: var(--c, var(--blue)); }
+.edge-label {
+  fill: var(--ink-soft); font-family: var(--font-hand); font-size: 12.5px; text-anchor: middle;
+  transition: fill 0.2s var(--ease);
+}
+.edge-label.is-active { fill: var(--c, var(--blue)); font-weight: 700; }
+.group path, .group rect { stroke: var(--c, var(--ink-faint)); fill: none; }
+.group text {
+  fill: var(--c, var(--ink-faint)); font-family: var(--font-hand);
+  font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+}
+.is-dimmed { opacity: 0.22; }
+.node, .edge, .edge-label, .group { transition: opacity 0.3s var(--ease); }
+
+/* ================= 流动粒子(演示当前步骤数据流向)+ 降级动画 ================= */
+.flow-dot { display: none; }
+@supports (offset-path: path('M0 0L8 8')) {
+  .flow-dot { display: block; opacity: 0; offset-rotate: 0deg; animation: flow-move linear infinite; }
+}
+@keyframes flow-move {
+  0% { offset-distance: 0%; opacity: 0; }
+  12% { opacity: 0.9; }
+  88% { opacity: 0.9; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+@keyframes fade-in-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.anim-in { opacity: 0; animation: fade-in-up 0.4s var(--ease) forwards; animation-delay: calc(var(--i, 0) * 60ms); }
+/* draw-on 入场:纯 CSS,配合 JS 设置 pathLength=1 与 --di 序号 */
+.draw-in {
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+  animation: draw-on 0.55s var(--ease) both;
+  animation-delay: calc(var(--di, 0) * 15ms);
+}
+@keyframes draw-on { to { stroke-dashoffset: 0; } }
+.fade-el { opacity: 0; animation: fade-el-in 0.35s ease-out both; animation-delay: calc(var(--di, 0) * 15ms); }
+@keyframes fade-el-in { to { opacity: 1; } }
+.panel-swap { animation: fade-in-up 0.3s var(--ease) both; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="anim-in">
+    <!-- 【替换】标题与一句话概述 -->
+    <h1>示例:请求处理流程</h1>
+    <p class="subtitle">模板自带最小可运行示例。联网时呈现手绘风与编排动画;断网时自动降级为干净静态图,内容不丢。</p>
+  </header>
+
+  <!-- 【替换】按选定布局组织页面;不需要步骤面板时删除 stepper 与 step-panel -->
+  <section class="layout-split">
+    <div>
+      <div class="stepper anim-in" id="stepper" style="--i:1"></div>
+      <div class="diagram anim-in" id="diagram" style="--i:2; margin-top:12px"></div>
+    </div>
+    <aside class="panel anim-in" id="step-panel" style="--i:3"></aside>
+  </section>
+</div>
+
+<script type="module">
+/* ================= 0. 配置与依赖加载(通用,勿改结构)================= */
+
+const SKETCH = { seed: 7, roughness: 1.2, bowing: 1.1 };
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function loadScript(srcs, timeout = 6000) {
+  return new Promise(resolve => {
+    const timer = setTimeout(() => resolve(false), timeout);
+    let i = 0;
+    const next = () => {
+      if (i >= srcs.length) { clearTimeout(timer); return resolve(false); }
+      const s = document.createElement('script');
+      s.src = srcs[i++];
+      s.onload = () => { clearTimeout(timer); resolve(true); };
+      s.onerror = () => { s.remove(); next(); };
+      document.head.appendChild(s);
+    };
+    next();
+  });
+}
+
+const hasRough = await loadScript([
+  'https://cdn.jsdelivr.net/npm/roughjs@4.6.6/bundled/rough.min.js',
+  'https://unpkg.com/roughjs@4.6.6/bundled/rough.js',
+]);
+
+/* ================= 1. 数据定义(【替换】为实际内容)================= */
+
+const NODE_W = 150, NODE_H = 52;
+
+const nodes = [
+  { id: 'client', x: 30,  y: 60, label: 'Client',   sub: '浏览器 / 应用', color: 'var(--amber)' },
+  { id: 'server', x: 270, y: 60, label: 'Server',   sub: 'API 服务',     color: 'var(--blue)' },
+  { id: 'db',     x: 510, y: 60, label: 'Database', sub: '存储',         color: 'var(--teal)' },
+];
+
+const edges = [
+  { id: 'req',   from: 'client', to: 'server', label: 'HTTP 请求' },
+  { id: 'query', from: 'server', to: 'db',     label: 'SQL 查询' },
+];
+
+const steps = [
+  { label: '① 请求', title: '客户端发起请求', desc: '浏览器向 API 服务发送 HTTP 请求。', nodes: ['client', 'server'], edges: ['req'] },
+  { label: '② 查询', title: '服务端查询数据', desc: 'API 服务将请求转换为 SQL 查询交给数据库执行。', nodes: ['server', 'db'], edges: ['query'] },
+];
+
+const VIEWBOX = '0 0 700 180';
+
+/* ================= 2. 手绘渲染 helpers(通用,一般无需修改)================= */
+
+const NS = 'http://www.w3.org/2000/svg';
+const svgEl = (tag, attrs = {}) => {
+  const el = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+};
+let rcHolder = null; // rough generator,绑定在渲染目标 svg 上
+
+function sketchRect(x, y, w, h, { seed, dash, fill } = {}) {
+  if (!hasRough) {
+    const r = svgEl('rect', { x, y, width: w, height: h, rx: 8 });
+    if (dash) r.setAttribute('stroke-dasharray', '8 6');
+    return r;
+  }
+  return rcHolder.rectangle(x, y, w, h, {
+    roughness: SKETCH.roughness, bowing: SKETCH.bowing,
+    seed: (seed ?? SKETCH.seed), strokeWidth: 1.6,
+    ...(dash ? { strokeLineDash: [8, 6] } : {}),
+    ...(fill ? { fill: '#000', fillStyle: 'hachure', fillWeight: 0.6, hachureGap: 7 } : {}),
+  });
+}
+
+function sketchPath(d, { seed } = {}) {
+  if (!hasRough) return svgEl('path', { d, class: 'shaft' });
+  const g = rcHolder.path(d, {
+    roughness: Math.min(SKETCH.roughness, 1), bowing: 0.8,
+    seed: (seed ?? SKETCH.seed), strokeWidth: 1.6,
+  });
+  g.classList.add('shaft');
+  return g;
+}
+
+function nodeBox({ id, x, y, w = NODE_W, h = NODE_H, label, sub, color }) {
+  const g = svgEl('g', { class: 'node', 'data-id': id });
+  if (color) g.style.setProperty('--c', color);
+  // 淡色斜线填充(手绘阴影)
+  if (hasRough) {
+    const hf = svgEl('g', { class: 'hfill' });
+    hf.appendChild(rcHolder.rectangle(x, y, w, h, {
+      seed: hashId(id), stroke: 'none', fill: '#000',
+      fillStyle: 'hachure', fillWeight: 0.5, hachureGap: 8, roughness: 1,
+    }));
+    g.appendChild(hf);
+  }
+  const shape = svgEl('g', { class: 'shape' });
+  shape.appendChild(sketchRect(x, y, w, h, { seed: hashId(id) }));
+  g.appendChild(shape);
+  const labelY = sub ? y + h / 2 - 8 : y + h / 2;
+  g.appendChild(text(x + w / 2, labelY, label, 'node-label'));
+  if (sub) g.appendChild(text(x + w / 2, y + h / 2 + 13, sub, 'node-sub'));
+  return g;
+}
+
+// 箭头连线;curve>0 沿法线弯曲。手绘箭头 = 主笔画 + 两条短撇
+function edgeLine({ id, x1, y1, x2, y2, label, curve = 0, color }) {
+  const g = svgEl('g', { class: 'edge', 'data-id': id });
+  if (color) g.style.setProperty('--c', color);
+  let d, lx, ly, ang;
+  if (curve) {
+    const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+    const cx = (x1 + x2) / 2 - (dy / len) * curve;
+    const cy = (y1 + y2) / 2 + (dx / len) * curve;
+    d = `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
+    lx = 0.25 * x1 + 0.5 * cx + 0.25 * x2;
+    ly = 0.25 * y1 + 0.5 * cy + 0.25 * y2 - 8;
+    ang = Math.atan2(y2 - cy, x2 - cx);
+  } else {
+    d = `M ${x1} ${y1} L ${x2} ${y2}`;
+    lx = (x1 + x2) / 2; ly = (y1 + y2) / 2 - 8;
+    ang = Math.atan2(y2 - y1, x2 - x1);
+  }
+  g.dataset.d = d; // 理想路径,供 flowDots 做流动粒子轨道
+  const w = svgEl('g');
+  w.appendChild(sketchPath(d, { seed: hashId(id) }));
+  // 箭头两撇
+  for (const side of [0.5, -0.5]) {
+    const hx = x2 - 11 * Math.cos(ang + side), hy = y2 - 11 * Math.sin(ang + side);
+    w.appendChild(sketchPath(`M ${hx} ${hy} L ${x2} ${y2}`, { seed: hashId(id) + 7 }));
+  }
+  g.appendChild(w);
+  if (label) {
+    const t = text(lx, ly, label, 'edge-label');
+    t.dataset.id = id;
+    g.appendChild(t);
+  }
+  return g;
+}
+
+function groupArea({ x, y, w, h, label, color }) {
+  const g = svgEl('g', { class: 'group' });
+  if (color) g.style.setProperty('--c', color);
+  g.appendChild(sketchRect(x, y, w, h, { seed: hashId(label), dash: true }));
+  const t = text(x + 14, y + 18, label, '');
+  t.setAttribute('text-anchor', 'start');
+  g.appendChild(t);
+  return g;
+}
+
+// 流动粒子:沿路径 d 循环移动的小圆点,演示数据流向(REDUCED 时不生成)
+function flowDots(d, { color = 'var(--blue)', dur = 2.2, count = 2, r = 3.5 } = {}) {
+  const g = svgEl('g', { class: 'flow' });
+  for (let i = 0; i < count && !REDUCED; i++) {
+    const c = svgEl('circle', { r, fill: color, class: 'flow-dot' });
+    c.style.offsetPath = `path('${d}')`;
+    c.style.animationDuration = `${dur}s`;
+    c.style.animationDelay = `${(-dur / count) * i}s`;
+    g.appendChild(c);
+  }
+  return g;
+}
+
+// 在当前步骤的活跃连线上重建流动粒子
+function syncFlows(step) {
+  const svg = document.querySelector('#diagram svg');
+  if (!svg) return;
+  svg.querySelectorAll('.flow').forEach(f => f.remove());
+  (step.edges || []).forEach(id => {
+    const eg = svg.querySelector(`.edge[data-id="${id}"]`);
+    if (!eg || !eg.dataset.d) return;
+    const color = eg.style.getPropertyValue('--c') || 'var(--blue)';
+    svg.appendChild(flowDots(eg.dataset.d, { color }));
+  });
+}
+
+function text(x, y, str, cls) {
+  const t = svgEl('text', { x, y, class: cls });
+  t.textContent = str;
+  return t;
+}
+function hashId(s) { let h = 9; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 1000; return h; }
+function byId(id) { return nodes.find(n => n.id === id); }
+const rightOf  = n => ({ x: n.x + (n.w || NODE_W), y: n.y + (n.h || NODE_H) / 2 });
+const leftOf   = n => ({ x: n.x, y: n.y + (n.h || NODE_H) / 2 });
+const topOf    = n => ({ x: n.x + (n.w || NODE_W) / 2, y: n.y });
+const bottomOf = n => ({ x: n.x + (n.w || NODE_W) / 2, y: n.y + (n.h || NODE_H) });
+
+/* ================= 3. 渲染(【替换】布局与组装逻辑)================= */
+
+function renderDiagram() {
+  const svg = svgEl('svg', { viewBox: VIEWBOX, role: 'img' });
+  if (hasRough) rcHolder = rough.svg(svg);
+  edges.forEach(e => {
+    const a = rightOf(byId(e.from)), b = leftOf(byId(e.to));
+    svg.appendChild(edgeLine({ ...e, x1: a.x + 4, y1: a.y, x2: b.x - 4, y2: b.y }));
+  });
+  nodes.forEach(n => svg.appendChild(nodeBox(n)));
+  const box = document.getElementById('diagram');
+  box.textContent = '';
+  box.appendChild(svg);
+  return svg;
+}
+
+/* ================= 4. 步骤编排(全 CSS 驱动:class 切换 + 动画重放,任何环境可达终态)================= */
+
+const state = { step: 0 };
+
+function applyClasses(step) {
+  document.querySelectorAll('.step-btn').forEach((b, i) => b.classList.toggle('is-current', i === state.step));
+  document.querySelectorAll('.node').forEach(el => {
+    const on = step.nodes.includes(el.dataset.id);
+    el.classList.toggle('is-active', on);
+    el.classList.toggle('is-dimmed', !on);
+  });
+  document.querySelectorAll('.edge, .edge-label').forEach(el => {
+    const on = step.edges.includes(el.dataset.id);
+    el.classList.toggle('is-active', on);
+    el.classList.toggle('is-dimmed', !on);
+  });
+}
+
+function renderPanel(step) {
+  const kvRows = (step.kv || []).map(([k, v]) =>
+    `<div class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+  document.getElementById('step-panel').innerHTML =
+    `<div class="panel-swap"><h3>${step.title}</h3><p>${step.desc}</p>
+    ${kvRows ? `<div style="margin-top:12px;padding-top:10px;border-top:1.4px dashed var(--line)">${kvRows}</div>` : ''}</div>`;
+}
+
+function goStep(i) {
+  state.step = i;
+  const step = steps[i];
+  applyClasses(step);
+  renderPanel(step);
+  syncFlows(step);
+  if (REDUCED) return;
+  // 活跃连线重放 draw-on:移除动画类 → 强制 reflow → 重新加上,纯 CSS 重触发
+  const sel = step.edges.map(id => `.edge[data-id="${id}"] path`).join(',');
+  if (!sel) return;
+  const paths = document.querySelectorAll(sel);
+  paths.forEach(p => p.classList.remove('draw-in'));
+  void document.body.offsetWidth;
+  paths.forEach((p, k) => { p.style.setProperty('--di', k * 4); p.classList.add('draw-in'); });
+}
+
+function renderStepper() {
+  document.getElementById('stepper').innerHTML = steps.map((s, i) =>
+    `<button class="step-btn" data-i="${i}">${s.label}</button>`).join('');
+}
+document.getElementById('stepper').addEventListener('click', e => {
+  const b = e.target.closest('button[data-i]');
+  if (b) goStep(+b.dataset.i);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') goStep(Math.min(state.step + 1, steps.length - 1));
+  if (e.key === 'ArrowLeft') goStep(Math.max(state.step - 1, 0));
+});
+
+/* ================= 5. 入场:draw-on 描边绘制(纯 CSS,任何环境可达终态)================= */
+
+function cssIntro(svg) {
+  let i = 0;
+  svg.querySelectorAll('.shape path, .edge path, .group path, .shape rect, .group rect').forEach(p => {
+    p.setAttribute('pathLength', 1);
+    p.style.setProperty('--di', i++);
+    p.classList.add('draw-in');
+  });
+  svg.querySelectorAll('text').forEach(t => { t.style.setProperty('--di', i); t.classList.add('fade-el'); });
+  svg.querySelectorAll('.hfill').forEach(h => { h.style.setProperty('--di', i + 6); h.classList.add('fade-el'); });
+  return 650 + i * 15; // 估算总时长(ms)
+}
+function finishIntro() {
+  syncFlows(steps[state.step]); // 绘制入场结束后再放流动粒子
+}
+
+/* ================= 6. 初始化 ================= */
+
+const svg = renderDiagram();
+renderStepper();
+renderPanel(steps[0]);
+applyClasses(steps[0]);
+if (REDUCED) {
+  finishIntro();
+} else {
+  setTimeout(finishIntro, cssIntro(svg) + 100);
+}
+</script>
+</body>
+</html>

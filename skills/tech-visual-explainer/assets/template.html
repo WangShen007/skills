@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 【填写】页面标题 -->
+<title>技术可视化</title>
+<style>
+/* ================= 设计 Token(唯一定义处,禁止在别处重复 hex)================= */
+:root {
+  --bg: #0c1017;
+  --surface: #141922;
+  --surface-alt: #1c2230;
+  --border: #2a3142;
+  --border-light: #354058;
+  --text: #e2e6f0;
+  --text-secondary: #7c849a;
+  --text-tertiary: #505870;
+  --accent: #4d8eff;
+  --teal: #34d1b4;
+  --amber: #f0b040;
+  --red: #ef5050;
+  --purple: #a78bfa;
+  --accent-soft: color-mix(in srgb, var(--accent) 10%, transparent);
+  --radius: 8px;
+  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --font-sans: 'IBM Plex Sans', -apple-system, 'Segoe UI', 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, monospace;
+}
+[data-theme="light"] {
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --surface-alt: #f0f2f5;
+  --border: #dce0e8;
+  --border-light: #c5cad4;
+  --text: #1a1f2e;
+  --text-secondary: #5a6070;
+  --text-tertiary: #8a90a0;
+  --accent: #2a6ce0;
+  --teal: #18a88c;
+  --amber: #c48820;
+  --red: #d03030;
+  --purple: #7c5cd0;
+}
+
+/* ================= 基础 ================= */
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: var(--font-sans); font-size: 14px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.container { max-width: 1120px; margin: 0 auto; padding: 40px 24px 64px; }
+h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+h2 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+.subtitle { margin: 8px 0 0; font-size: 14px; color: var(--text-secondary); max-width: 640px; }
+section { margin-top: 40px; }
+
+/* ================= 布局 ================= */
+.layout-split { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+.layout-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 860px) { .layout-split, .layout-compare { grid-template-columns: 1fr; } }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+
+/* ================= 组件 ================= */
+.diagram { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.diagram svg { display: block; width: 100%; height: auto; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.card h3 { font-family: var(--font-mono); font-size: 13px; }
+.card p, .panel p { margin: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.7; }
+.panel { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.panel .kv { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; margin-top: 6px; }
+.panel .kv .k { color: var(--text-tertiary); font-family: var(--font-mono); }
+.panel .kv .v { color: var(--text-secondary); text-align: right; }
+.stepper { display: flex; gap: 6px; flex-wrap: wrap; }
+.step-btn {
+  padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface-alt); color: var(--text-secondary);
+  font: 500 12px var(--font-mono); cursor: pointer;
+  transition: color 0.2s var(--ease), background-color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.step-btn:hover { color: var(--text); border-color: var(--border-light); }
+.step-btn.is-current { background: var(--accent); border-color: var(--accent); color: #fff; }
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font: 500 11px var(--font-mono); color: var(--c, var(--accent));
+  background: color-mix(in srgb, var(--c, var(--accent)) 12%, transparent);
+}
+
+/* ================= SVG 图元(配合 JS helpers,节点分类色用 --c 传入)================= */
+.node { transition: opacity 0.3s var(--ease); }
+.node rect {
+  fill: var(--surface-alt); stroke: var(--border); stroke-width: 1;
+  transition: stroke 0.2s var(--ease), fill 0.2s var(--ease), stroke-width 0.2s var(--ease);
+}
+.node .node-label {
+  fill: var(--text); font: 600 13px var(--font-mono);
+  text-anchor: middle; dominant-baseline: central;
+  transition: fill 0.2s var(--ease);
+}
+.node .node-sub {
+  fill: var(--text-tertiary); font: 400 11px var(--font-mono);
+  text-anchor: middle; dominant-baseline: central;
+}
+.node:hover rect, .node.is-active rect {
+  stroke: var(--c, var(--accent)); stroke-width: 1.5;
+  fill: color-mix(in srgb, var(--c, var(--accent)) 10%, var(--surface-alt));
+}
+.node:hover .node-label, .node.is-active .node-label { fill: var(--c, var(--accent)); }
+.edge {
+  fill: none; stroke: var(--border-light); stroke-width: 1.5; marker-end: url(#arrow);
+  transition: stroke 0.2s var(--ease), opacity 0.3s var(--ease);
+}
+.edge.is-active { stroke: var(--accent); marker-end: url(#arrow-accent); }
+.edge-label {
+  fill: var(--text-tertiary); font: 400 10px var(--font-mono); text-anchor: middle;
+  transition: fill 0.2s var(--ease), opacity 0.3s var(--ease);
+}
+.edge-label.is-active { fill: var(--accent); }
+.group { transition: opacity 0.3s var(--ease); }
+.group rect {
+  fill: color-mix(in srgb, var(--c, var(--accent)) 6%, transparent);
+  stroke: var(--c, var(--accent)); stroke-width: 1; stroke-dasharray: 6 3; opacity: 0.5;
+}
+.group text {
+  fill: var(--c, var(--accent)); opacity: 0.7;
+  font: 600 10px var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase;
+}
+.is-dimmed { opacity: 0.25; }
+
+/* ================= 动效(只动 opacity/transform/stroke-*)================= */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.anim-in { opacity: 0; animation: fade-in-up 0.4s var(--ease) forwards; animation-delay: calc(var(--i, 0) * 60ms); }
+@keyframes flow { to { stroke-dashoffset: -24; } }
+.flow-line { stroke-dasharray: 8 4; animation: flow 1.5s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="anim-in">
+    <!-- 【替换】标题与一句话概述 -->
+    <h1>示例:请求处理流程</h1>
+    <p class="subtitle">模板自带最小可运行示例,用于验证直接打开正常。生成时整体替换为实际内容。</p>
+  </header>
+
+  <!-- 【替换】按选定布局组织页面;不需要步骤面板时删除 stepper 与 step-panel -->
+  <section class="layout-split">
+    <div>
+      <div class="stepper anim-in" id="stepper" style="--i:1"></div>
+      <div class="diagram anim-in" id="diagram" style="--i:2; margin-top:12px"></div>
+    </div>
+    <aside class="panel anim-in" id="step-panel" style="--i:3"></aside>
+  </section>
+</div>
+
+<script>
+'use strict';
+
+/* ================= 1. 数据定义(【替换】为实际内容)================= */
+
+const NODE_W = 140, NODE_H = 48;
+
+const nodes = [
+  { id: 'client', x: 40,  y: 60, label: 'Client',   sub: '浏览器',  color: 'var(--amber)' },
+  { id: 'server', x: 260, y: 60, label: 'Server',   sub: 'API 服务', color: 'var(--accent)' },
+  { id: 'db',     x: 480, y: 60, label: 'Database', sub: '存储',    color: 'var(--teal)' },
+];
+
+const edges = [
+  { id: 'req',   from: 'client', to: 'server', label: 'HTTP 请求', animated: true },
+  { id: 'query', from: 'server', to: 'db',     label: 'SQL 查询' },
+];
+
+const steps = [
+  { label: '1 请求', title: '客户端发起请求', desc: '浏览器向 API 服务发送 HTTP 请求。', nodes: ['client', 'server'], edges: ['req'] },
+  { label: '2 查询', title: '服务端查询数据', desc: 'API 服务将请求转换为 SQL 查询交给数据库执行。', nodes: ['server', 'db'], edges: ['query'] },
+];
+
+/* ================= 2. SVG helpers(通用,一般无需修改)================= */
+
+const SVG_DEFS = `<defs>
+  <marker id="arrow" viewBox="0 0 10 8" refX="10" refY="4" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 4 L 0 8 z" fill="var(--text-tertiary)"/>
+  </marker>
+  <marker id="arrow-accent" viewBox="0 0 10 8" refX="10" refY="4" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 4 L 0 8 z" fill="var(--accent)"/>
+  </marker>
+</defs>`;
+
+function nodeBox({ id, x, y, w = NODE_W, h = NODE_H, label, sub, color }) {
+  const style = color ? ` style="--c:${color}"` : '';
+  const labelY = sub ? y + h / 2 - 7 : y + h / 2;
+  return `<g class="node" data-id="${id}"${style}>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8"/>
+    <text class="node-label" x="${x + w / 2}" y="${labelY}">${label}</text>
+    ${sub ? `<text class="node-sub" x="${x + w / 2}" y="${y + h / 2 + 11}">${sub}</text>` : ''}
+  </g>`;
+}
+
+// 箭头连线;curve>0 时沿法线方向弯曲(单位 px)
+function edgeLine({ id, x1, y1, x2, y2, label, animated = false, curve = 0 }) {
+  let d, lx, ly;
+  if (curve) {
+    const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+    const cx = (x1 + x2) / 2 - (dy / len) * curve;
+    const cy = (y1 + y2) / 2 + (dx / len) * curve;
+    d = `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
+    lx = 0.25 * x1 + 0.5 * cx + 0.25 * x2;
+    ly = 0.25 * y1 + 0.5 * cy + 0.25 * y2 - 6;
+  } else {
+    d = `M ${x1} ${y1} L ${x2} ${y2}`;
+    lx = (x1 + x2) / 2;
+    ly = (y1 + y2) / 2 - 6;
+  }
+  return `<path class="edge${animated ? ' flow-line' : ''}" data-id="${id}" d="${d}"/>
+    ${label ? `<text class="edge-label" data-id="${id}" x="${lx}" y="${ly}">${label}</text>` : ''}`;
+}
+
+function groupArea({ x, y, w, h, label, color }) {
+  const style = color ? ` style="--c:${color}"` : '';
+  return `<g class="group"${style}>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12"/>
+    <text x="${x + 12}" y="${y + 16}">${label}</text>
+  </g>`;
+}
+
+// 节点四边中点锚点,供连线定位
+function byId(id) { return nodes.find(n => n.id === id); }
+function rightOf(n)  { return { x: n.x + (n.w || NODE_W), y: n.y + (n.h || NODE_H) / 2 }; }
+function leftOf(n)   { return { x: n.x, y: n.y + (n.h || NODE_H) / 2 }; }
+function topOf(n)    { return { x: n.x + (n.w || NODE_W) / 2, y: n.y }; }
+function bottomOf(n) { return { x: n.x + (n.w || NODE_W) / 2, y: n.y + (n.h || NODE_H) }; }
+
+/* ================= 3. 渲染(【替换】布局与组装逻辑)================= */
+
+function renderDiagram() {
+  const parts = edges.map(e => {
+    const a = rightOf(byId(e.from)), b = leftOf(byId(e.to));
+    return edgeLine({ id: e.id, x1: a.x + 3, y1: a.y, x2: b.x - 3, y2: b.y, label: e.label, animated: e.animated });
+  }).concat(nodes.map(nodeBox));
+  document.getElementById('diagram').innerHTML =
+    `<svg viewBox="0 0 660 170" role="img">${SVG_DEFS}${parts.join('')}</svg>`;
+}
+
+/* ================= 4. 状态与交互 ================= */
+
+const state = { step: 0 };
+
+function setStep(i) { state.step = i; update(); }
+
+function update() {
+  const step = steps[state.step];
+  document.querySelectorAll('.step-btn').forEach((b, i) => b.classList.toggle('is-current', i === state.step));
+  document.querySelectorAll('.node').forEach(el => {
+    const on = step.nodes.includes(el.dataset.id);
+    el.classList.toggle('is-active', on);
+    el.classList.toggle('is-dimmed', !on);
+  });
+  document.querySelectorAll('.edge, .edge-label').forEach(el => {
+    const on = step.edges.includes(el.dataset.id);
+    el.classList.toggle('is-active', on);
+    el.classList.toggle('is-dimmed', !on);
+  });
+  document.getElementById('step-panel').innerHTML =
+    `<div class="anim-in"><h3>${step.title}</h3><p>${step.desc}</p></div>`;
+}
+
+function renderStepper() {
+  document.getElementById('stepper').innerHTML = steps.map((s, i) =>
+    `<button class="step-btn" onclick="setStep(${i})">${s.label}</button>`).join('');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') setStep(Math.min(state.step + 1, steps.length - 1));
+  if (e.key === 'ArrowLeft') setStep(Math.max(state.step - 1, 0));
+});
+
+/* ================= 5. 初始化 ================= */
+
+renderDiagram();
+renderStepper();
+update();
+</script>
+</body>
+</html>
